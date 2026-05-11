@@ -3,21 +3,35 @@ import numpy as np
 import gradio as gr
 from PIL import Image, ImageOps
 from model import CNNModel, load_model
+import os
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model = CNNModel()
-try:
-    model = load_model(model, 'model_best.pth', device)
-    print("Model loaded successfully!")
-except:
+
+# 模型路径 - 尝试不同的可能位置
+model_paths = ['model_best.pth', '机械学习实验三/model_best.pth']
+model_loaded = False
+
+for model_path in model_paths:
+    try:
+        if os.path.exists(model_path):
+            model = load_model(model, model_path, device)
+            print(f"Model loaded successfully from {model_path}!")
+            model_loaded = True
+            break
+    except Exception as e:
+        print(f"Failed to load model from {model_path}: {e}")
+
+if not model_loaded:
     print("Warning: Model file not found. Using untrained model for demo.")
+
 model.to(device)
 
 
 def preprocess_image(image):
     if isinstance(image, dict):
-        image = image['composite']
+        image = image.get('composite', None)
     
     if image is None:
         return None
@@ -117,4 +131,7 @@ with gr.Blocks(title="手写数字识别系统") as demo:
 
 
 if __name__ == "__main__":
-    demo.launch(share=True)
+    # 为Render部署配置正确的启动端口
+    import os
+    port = int(os.getenv("PORT", 7860))
+    demo.launch(server_name="0.0.0.0", server_port=port)
